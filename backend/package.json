@@ -1,0 +1,32 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "seed": "node src/scripts/seedAdmin.js"
+  },
+  "keywords": [
+    "erp",
+    "admin-panel",
+    "rbac"
+  ],
+  "type": "module",
+  "author": "Rohit Pakhre",
+  "license": "MIT",
+  "packageManager": "pnpm@10.16.0",
+  "dependencies": {
+    "argon2": "^0.44.0",
+    "cloudinary": "^2.9.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.1.4",
+    "multer": "^2.0.2",
+    "resend": "^6.8.0"
+  }
+}
