@@ -2,7 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.utils.js";
 import { ApiError } from "../utils/ApiError.utils.js";
 import { ApiResponse } from "../utils/ApiResponse.utils.js";
 import { User } from "../models/User.model.js";
-import { hashPassword } from "../utils/auth.utils.js"; 
+import { hashPassword } from "../utils/auth.utils.js";
 
 const getAllUsers = asyncHandler(async (req, res) => {
     const users = await User.find({}).populate('role').select('-password -refreshToken');
@@ -24,7 +24,7 @@ const getUserById = asyncHandler(async (req, res) => {
 
 const updateUser = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { name, email, role, isActive, password } = req.body; 
+    const { name, email, role, isActive, password } = req.body;
 
     const user = await User.findById(id);
 
@@ -32,7 +32,6 @@ const updateUser = asyncHandler(async (req, res) => {
         throw new ApiError(404, "User not found");
     }
 
-    // Update fields
     if (name) user.name = name;
     if (email) user.email = email;
     if (role) user.role = role;

@@ -3,14 +3,14 @@ import { hashPassword, verifyPassword } from "../utils/auth.utils.js";
 import { ApiError } from "../utils/ApiError.utils.js";
 import { ApiResponse } from "../utils/ApiResponse.utils.js";
 import { User } from "../models/User.model.js";
-import { Role } from "../models/Role.model.js"; 
+import { Role } from "../models/Role.model.js";
 import { AuthService } from "../service/auth.service.js";
 
 const authService = new AuthService();
 
 const register = asyncHandler(async (req, res) => {
-    const { name, email, password } = req.body; 
-    let { role } = req.body; 
+    const { name, email, password } = req.body;
+    let { role } = req.body;
 
     if (!name || !email || !password) {
         throw new ApiError(400, "Name, email, and password are required");
@@ -22,7 +22,7 @@ const register = asyncHandler(async (req, res) => {
     }
 
     if (!role) {
-        let defaultEmployeeRole = await Role.findOne({ name: "employee" });
+        let defaultEmployeeRole = await Role.findOne({ name: "Employee" });
         if (!defaultEmployeeRole) {
             defaultEmployeeRole = new Role({
                 name: "Employee",
@@ -70,8 +70,6 @@ const register = asyncHandler(async (req, res) => {
             email: user.email,
             role: user.role
         },
-        accessToken,
-        refreshToken
     }, "User registered successfully"));
 });
 
