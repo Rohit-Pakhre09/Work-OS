@@ -1,8 +1,11 @@
-import 'dotenv/config';
+import dotenv from "dotenv";
 import mongoose from 'mongoose';
 import { User } from '../models/User.model.js';
 import { Role } from '../models/Role.model.js';
 import { hashPassword } from '../utils/auth.utils.js';
+
+dotenv.config({path: ".env"});
+dotenv.config({path: ".env.local"});
 
 const seedERP = async () => {
   try {
@@ -27,13 +30,32 @@ const seedERP = async () => {
     }
 
     const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASS;
+
+    if (!adminEmail || !adminPassword) {
+      throw new Error('ADMIN_EMAIL and ADMIN_PASS must be set in environment variables');
+    }
+
     let adminUser = await User.findOne({ email: adminEmail });
 
     if (!adminUser) {
-      const hashedPassword = await hashPassword(process.env.ADMIN_PASS);
+      const hashedPassword = await hashPassword(adminPassword);
+
+      // Generate employeeId for admin
+      const lastEmployee = await User.findOne({}, { employeeId: 1 }, { sort: { createdAt: -1 } });
+      let newIdNumber = 1;
+      if (lastEmployee && lastEmployee.employeeId && lastEmployee.employeeId.startsWith('EMP')) {
+        const lastIdNumber = parseInt(lastEmployee.employeeId.replace('EMP', ''), 10);
+        if (!isNaN(lastIdNumber)) {
+          newIdNumber = lastIdNumber + 1;
+        }
+      }
+      const employeeId = `EMP${String(newIdNumber).padStart(5, '0')}`;
 
       adminUser = await User.create({
-        name: 'ERP Admin',
+        employeeId,
+        firstName: 'ERP',
+        lastName: 'Admin',
         email: adminEmail,
         password: hashedPassword,
         role: rolesMap['Admin']._id,

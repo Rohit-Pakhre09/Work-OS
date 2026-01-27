@@ -1,11 +1,57 @@
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
-    name: {
+    employeeId: {
+        type: String,
+        unique: true,
+        required: true,
+        trim: true
+    },
+    firstName: {
         type: String,
         required: true,
         trim: true
     },
+    lastName: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    dateOfBirth: {
+        type: Date,
+    },
+    gender: {
+        type: String,
+        enum: ['Male', 'Female', 'Other']
+    },
+    nationalId: {
+        type: String,
+        trim: true
+    },
+    contactInfo: {
+        phone: String,
+        address: String
+    },
+    dateOfHire: {
+        type: Date,
+        default: Date.now
+    },
+    jobTitle: {
+        type: String
+    },
+    department: {
+        type: String 
+    },
+    manager: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User' 
+    },
+    employmentStatus: {
+        type: String,
+        enum: ['Active', 'On-Leave', 'Terminated'],
+        default: 'Active'
+    },
+
     email: {
         type: String,
         required: true,

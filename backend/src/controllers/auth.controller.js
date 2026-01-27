@@ -9,11 +9,11 @@ import { AuthService } from "../service/auth.service.js";
 const authService = new AuthService();
 
 const register = asyncHandler(async (req, res) => {
-    const { name, email, password } = req.body;
+    const { firstName, lastName, email, password } = req.body;
     let { role } = req.body;
 
-    if (!name || !email || !password) {
-        throw new ApiError(400, "Name, email, and password are required");
+    if (!firstName || !lastName || !email || !password) {
+        throw new ApiError(400, "First name, last name, email, and password are required");
     }
 
     const existingUser = await User.findOne({ email });
@@ -21,6 +21,37 @@ const register = asyncHandler(async (req, res) => {
         throw new ApiError(409, "User with this email already exists");
     }
 
+    // Generate unique employee ID with collision detection
+    let employeeId;
+    let isIdUnique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (!isIdUnique && attempts < maxAttempts) {
+        const lastUser = await User.findOne({ employeeId: { $exists: true } })
+            .sort({ employeeId: -1 })
+            .select('employeeId');
+
+        let nextNumber = 1;
+        if (lastUser && lastUser.employeeId) {
+            const lastNumber = parseInt(lastUser.employeeId.replace('EMP', ''), 10);
+            if (!isNaN(lastNumber)) {
+                nextNumber = lastNumber + 1;
+            }
+        }
+
+        employeeId = `EMP${String(nextNumber).padStart(5, '0')}`;
+
+        const existingUser = await User.findOne({ employeeId });
+        if (!existingUser) {
+            isIdUnique = true;
+        }
+        attempts++;
+    }
+
+    if (!isIdUnique) {
+        throw new ApiError(500, "Unable to generate unique employee ID after multiple attempts");
+    }
     if (!role) {
         let defaultEmployeeRole = await Role.findOne({ name: "Employee" });
         if (!defaultEmployeeRole) {
@@ -37,7 +68,9 @@ const register = asyncHandler(async (req, res) => {
     const hashedPassword = await hashPassword(password);
 
     const user = await User.create({
-        name,
+        employeeId,
+        firstName,
+        lastName,
         email,
         password: hashedPassword,
         role
@@ -66,7 +99,8 @@ const register = asyncHandler(async (req, res) => {
     res.status(201).json(new ApiResponse(201, {
         user: {
             _id: user._id,
-            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
             email: user.email,
             role: user.role
         },
@@ -117,7 +151,8 @@ const login = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, {
         user: {
             _id: user._id,
-            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
             email: user.email,
             role: user.role
         },
