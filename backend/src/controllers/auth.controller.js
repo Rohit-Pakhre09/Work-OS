@@ -9,7 +9,7 @@ import { AuthService } from "../service/auth.service.js";
 const authService = new AuthService();
 
 const register = asyncHandler(async (req, res) => {
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, email, password, dateOfBirth, gender, nationalId, phone, address, jobTitle, department } = req.body;
     let { role } = req.body;
 
     if (!firstName || !lastName || !email || !password) {
@@ -21,7 +21,6 @@ const register = asyncHandler(async (req, res) => {
         throw new ApiError(409, "User with this email already exists");
     }
 
-    // Generate unique employee ID with collision detection
     let employeeId;
     let isIdUnique = false;
     let attempts = 0;
@@ -73,7 +72,16 @@ const register = asyncHandler(async (req, res) => {
         lastName,
         email,
         password: hashedPassword,
-        role
+        role,
+        dateOfBirth,
+        gender,
+        nationalId,
+        contactInfo: {
+            phone,
+            address
+        },
+        jobTitle,
+        department
     });
 
     const accessToken = authService.generateAccessToken({ _id: user._id, email: user.email });

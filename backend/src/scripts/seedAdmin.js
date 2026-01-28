@@ -41,7 +41,6 @@ const seedERP = async () => {
     if (!adminUser) {
       const hashedPassword = await hashPassword(adminPassword);
 
-      // Generate employeeId for admin
       const lastEmployee = await User.findOne({}, { employeeId: 1 }, { sort: { createdAt: -1 } });
       let newIdNumber = 1;
       if (lastEmployee && lastEmployee.employeeId && lastEmployee.employeeId.startsWith('EMP')) {
