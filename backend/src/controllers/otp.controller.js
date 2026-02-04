@@ -65,7 +65,9 @@ const verifyOtp = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid or expired OTP");
     }
 
-    await Otp.deleteOne({ _id: otp._id });
+    if (type !== 'forgotPassword') {
+        await Otp.deleteOne({ _id: otp._id });
+    }
 
     res.status(200).json(new ApiResponse(200, {}, "OTP verified successfully"));
 });
@@ -78,26 +80,29 @@ const forgotPassword = asyncHandler(async (req, res) => {
     }
 
     const user = await User.findOne({ email });
-    if (!user) {
-        throw new ApiError(404, "User not found");
+
+    if (user) {
+        const otpCode = crypto.randomInt(100000, 999999).toString();
+
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        await Otp.deleteMany({ userId: user._id, otpType: 'forgotPassword' });
+
+        await Otp.create({
+            userId: user._id,
+            otpCode,
+            otpType: 'forgotPassword',
+            expiresAt
+        });
+
+        try {
+            await emailService.sendOtpEmail(email, otpCode, 'forgotPassword');
+        } catch (emailError) {
+            console.error('Failed to send forgot password email:', emailError);
+        }
     }
 
-    const otpCode = crypto.randomInt(100000, 999999).toString();
-
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-    await Otp.deleteMany({ userId: user._id, otpType: 'forgotPassword' });
-
-    await Otp.create({
-        userId: user._id,
-        otpCode,
-        otpType: 'forgotPassword',
-        expiresAt
-    });
-
-    await emailService.sendOtpEmail(email, otpCode, 'forgotPassword');
-
-    res.status(200).json(new ApiResponse(200, {}, "Password reset OTP sent successfully"));
+    res.status(200).json(new ApiResponse(200, {}, "If an account with that email exists, we've sent you a password reset OTP."));
 });
 
 const resetPassword = asyncHandler(async (req, res) => {

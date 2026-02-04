@@ -9,4 +9,4 @@ await connectDB(URI);
 
 app.listen(PORT, () => {
     console.log("Express server started.");
-})
+});

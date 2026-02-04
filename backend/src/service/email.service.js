@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -7,7 +7,21 @@ import "dotenv/config";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.FROM_EMAIL,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+if (process.env.EMAIL_PASS) {
+    transporter.verify((error, success) => {
+        if (error) {
+            console.error('Transporter verification failed:', error);
+        }
+    });
+}
 
 export class EmailService {
     async sendOtpEmail(email, otpCode, type) {
@@ -34,27 +48,16 @@ export class EmailService {
 
             const template = fs.readFileSync(templatePath, 'utf8');
             const html = template.replace('{{OTP_CODE}}', otpCode);
-
-            if (process.env.NODE_ENV !== 'production') {
-                console.log(`\n=== DEVELOPMENT MODE: OTP EMAIL ===`);
-                console.log(`To: ${email}`);
-                console.log(`Subject: ${subject}`);
-                console.log(`OTP Code: ${otpCode}`);
-                console.log(`===================================\n`);
-            }
-
-            const { data, error } = await resend.emails.send({
+            
+            const mailOptions = {
                 from: process.env.FROM_EMAIL || 'onboarding@resend.dev',
-                to: [email],
+                to: email,
                 subject: subject,
                 html: html,
-            });
+            };
 
-            if (error) {
-                throw new Error(error.message);
-            }
-
-            return data;
+            const info = await transporter.sendMail(mailOptions);
+            return { messageId: info.messageId, status: 'sent' };
         } catch (error) {
             throw new Error(`Failed to send email: ${error.message}`);
         }
@@ -66,18 +69,15 @@ export class EmailService {
             const template = fs.readFileSync(templatePath, 'utf8');
             const html = template.replace('{{EMAIL}}', email);
 
-            const { data, error } = await resend.emails.send({
-                from: 'noreply@yourdomain.com', 
-                to: [email],
+            const mailOptions = {
+                from: process.env.FROM_EMAIL || 'onboarding@resend.dev',
+                to: email,
                 subject: 'Password Reset Successful',
                 html: html,
-            });
+            };
 
-            if (error) {
-                throw new Error(error.message);
-            }
-
-            return data;
+            const info = await transporter.sendMail(mailOptions);
+            return { messageId: info.messageId, status: 'sent' };
         } catch (error) {
             throw new Error(`Failed to send email: ${error.message}`);
         }

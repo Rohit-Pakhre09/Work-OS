@@ -13,7 +13,7 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
 
         const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-        const user = await User.findById(decodedToken._id).select("-password -refreshToken");
+        const user = await User.findById(decodedToken._id).select("-password -refreshToken").populate('role');
 
         if (!user) {
             throw new ApiError(401, "Invalid access token");
@@ -32,7 +32,7 @@ export const authorize = (...roles) => {
             throw new ApiError(401, "Authentication required");
         }
 
-        if (!roles.includes(req.user.role.name)) {
+        if (!roles.some(role => role.toLowerCase() === req.user.role.name.toLowerCase())) {
             throw new ApiError(403, "Insufficient permissions");
         }
 

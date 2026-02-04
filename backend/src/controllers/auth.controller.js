@@ -1,3 +1,5 @@
+import "dotenv/config";
+import jwt from "jsonwebtoken";
 import { asyncHandler } from "../utils/asyncHandler.utils.js";
 import { hashPassword, verifyPassword } from "../utils/auth.utils.js";
 import { ApiError } from "../utils/ApiError.utils.js";
@@ -5,6 +7,13 @@ import { ApiResponse } from "../utils/ApiResponse.utils.js";
 import { User } from "../models/User.model.js";
 import { Role } from "../models/Role.model.js";
 import { AuthService } from "../service/auth.service.js";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_SECRET_KEY,
+});
 
 const authService = new AuthService();
 
@@ -162,7 +171,8 @@ const login = asyncHandler(async (req, res) => {
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
-            role: user.role
+            role: user.role,
+            profilePicture: user.profilePicture
         },
         accessToken,
         refreshToken
@@ -224,9 +234,142 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 });
 
+const getProfile = asyncHandler(async (req, res) => {
+    const user = req.user;
+
+    const userProfile = await User.findById(user._id)
+        .populate('role')
+        .populate('manager', 'firstName lastName')
+        .select('-password -refreshToken');
+
+    if (!userProfile) {
+        throw new ApiError(404, "User not found");
+    }
+
+    res.status(200).json(new ApiResponse(200, {
+        user: userProfile
+    }, "Profile fetched successfully"));
+});
+
+const updateProfile = asyncHandler(async (req, res) => {
+    const user = req.user;
+    const updateData = req.body;
+
+    delete updateData.password;
+    delete updateData.role;
+    delete updateData.isActive;
+    delete updateData.employeeId;
+    delete updateData.refreshToken;
+    delete updateData.manager;
+    delete updateData.employmentStatus;
+
+    if (updateData.contactInfo) {
+        updateData.contactInfo = {
+            phone: updateData.contactInfo.phone || '',
+            address: updateData.contactInfo.address || ''
+        };
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+        user._id,
+        { $set: updateData },
+        { new: true }
+    )
+        .populate('role')
+        .populate('manager', 'firstName lastName')
+        .select('-password -refreshToken');
+
+    if (!updatedUser) {
+        throw new ApiError(404, "User not found");
+    }
+
+    res.status(200).json(new ApiResponse(200, {
+        user: updatedUser
+    }, "Profile updated successfully"));
+});
+
+const uploadProfilePicture = asyncHandler(async (req, res) => {
+    const user = req.user;
+
+    if (!req.file) {
+        throw new ApiError(400, "Profile picture is required");
+    }
+
+    try {
+        const result = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream({
+                folder: 'profile-pictures',
+                width: 300,
+                height: 300,
+                crop: 'fill',
+                gravity: 'face',
+                quality: 'auto',
+                fetch_format: 'auto',
+                resource_type: 'auto'
+            }, (error, result) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(result);
+                }
+            });
+            uploadStream.end(req.file.buffer);
+        });
+
+        const updatedUser = await User.findByIdAndUpdate(
+            user._id,
+            { profilePicture: result.secure_url },
+            { new: true }
+        ).populate('role').populate('manager', 'firstName lastName').select('-password -refreshToken');
+
+        if (!updatedUser) {
+            throw new ApiError(404, "User not found");
+        }
+
+        res.status(200).json(new ApiResponse(200, {
+            user: updatedUser
+        }, "Profile picture updated successfully"));
+    } catch (error) {
+        console.error('Profile picture upload error:', error);
+
+        if (error.message && error.message.includes('api_key')) {
+            throw new ApiError(500, "Cloudinary configuration error: API key not found");
+        }
+
+        throw new ApiError(500, `Failed to upload profile picture: ${error.message}`);
+    }
+});
+
+const removeProfilePicture = asyncHandler(async (req, res) => {
+    const user = req.user;
+
+    try {
+        const updatedUser = await User.findByIdAndUpdate(
+            user._id,
+            { profilePicture: null },
+            { new: true }
+        ).populate('role').populate('manager', 'firstName lastName').select('-password -refreshToken');
+
+        if (!updatedUser) {
+            throw new ApiError(404, "User not found");
+        }
+
+        res.status(200).json(new ApiResponse(200, {
+            user: updatedUser
+        }, "Profile picture removed successfully"));
+    } catch (error) {
+        console.error('Profile picture removal error:', error);
+        throw new ApiError(500, `Failed to remove profile picture: ${error.message}`);
+    }
+});
+
 export {
     register,
     login,
     logout,
-    refreshAccessToken
+    refreshAccessToken,
+    getProfile,
+    updateProfile,
+    uploadProfilePicture,
+    removeProfilePicture
 };
